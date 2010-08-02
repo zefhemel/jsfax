@@ -1,0 +1,41 @@
+%% Grammar for the Jsfax language
+%% By default, based on an example "entities" syntax
+module Jsfax
+
+imports Common
+
+exports
+
+  context-free start-symbols
+    Start
+
+  context-free syntax
+
+    Stat*       -> Start {cons("JSModule")}
+
+    "var" ID ";"                          -> Stat {cons("JSVarDeclNoInit")}
+    "var" ID "=" Exp ";"                  -> Stat {cons("JSVarDecl")}
+    "for" "(" Stat Exp ";" Exp ")" Stat   -> Stat {cons("JSFor")}
+    Exp ";"                -> Stat {cons("JSExpStat")}
+
+    "{" Stat* "}" -> Stat {cons("JSBlock")}
+
+  context-free syntax
+
+    STRING                 -> Exp {cons("JSStringLit")}
+    INT                    -> Exp {cons("JSIntLit")}
+    ID                     -> VarExp {cons("JSVar")}
+    VarExp                 -> Exp
+    VarExp "++"            -> Exp {cons("JSInc")}
+    VarExp "--"            -> Exp {cons("JSDec")}
+
+    Exp "+" Exp            -> Exp {cons("JSAdd")}
+    Exp "-" Exp            -> Exp {cons("JSSub")}
+    Exp "*" Exp            -> Exp {cons("JSMul")}
+    Exp "/" Exp            -> Exp {cons("JSDiv")}
+    Exp "%" Exp            -> Exp {cons("JSMod")}
+
+    Exp "." ID             -> Exp {cons("JSFieldAccess")}
+    Exp "(" {Exp ","}* ")" -> Exp {cons("JSCall")}
+
+    "function" "(" {ID ","}* ")" "{" Stat* "}" -> Exp {cons("JSFunctionExp")}

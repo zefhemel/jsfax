@@ -1,0 +1,16 @@
+module Jsfax.main
+
+imports Jsfax-Builders Jsfax-Colorer Jsfax-Completions Jsfax-Folding Jsfax-Outliner Jsfax-References Jsfax-Syntax
+
+language General properties
+                  
+  name          : Jsfax
+  id            : jsfax
+  extends       : Root
+                  
+  description   : "Spoofax/IMP-generated editor for the Jsfax language"
+  url           : http://strategoxt.org
+                  
+  extensions    : js
+  table         : include/Jsfax.tbl
+  start symbols : Start
