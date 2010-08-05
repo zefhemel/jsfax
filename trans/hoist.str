@@ -1,0 +1,51 @@
+module hoist
+
+imports
+  include/Jsfax
+
+strategies
+
+  js-hoist-statements =
+    {| VarDecls, FunctionDecls, Depth
+     : with(
+         depth := <add> (<Depth <+ !0>, 1)
+         ; rules ( Depth := depth )
+        )
+     ; alltd(js-hoist(|depth))
+     ; with(
+         x* := <bagof-VarDecls; concat <+ ![]> depth
+        ; if [] := x* then
+            vardecl-stats := []
+          else
+            vardecl-stats := [js-stat|[ var x*; ]|]
+          end
+       )
+     ; <concat> [vardecl-stats, <bagof-FunctionDecls <+ ![]> depth, <id>]
+    |}
+
+  js-hoist(|depth) :
+    vd@js-stat|[ var x*; ]| -> js-stat|[ {} ]|
+    where rules ( VarDecls :+ depth -> x* )
+
+  js-hoist(|depth) :
+    js-stat|[ var x = e; ]| -> js-stat|[ x = e2; ]|
+    where rules ( VarDecls :+ depth -> [x] )
+        ; e2 := <alltd(js-hoist(|depth))> e
+
+  js-hoist(|depth) :
+    fd@js-stat|[ function x(x*) { stat* } ]| -> js-stat|[ {} ]|
+    with stat2* := <js-hoist-statements> stat*
+    where rules ( FunctionDecls :+ depth -> js-stat|[ function x(x*) { stat2* }]| )
+
+  js-hoist(|depth) :
+    js-e|[ function (x*) { stat* } ]| -> js-e|[ function(x*) { stat2* } ]|
+    where stat2* := <js-hoist-statements> stat*
+
+  js-hoist(|depth) :
+    fd@js-stat|[ function x~(x*) { stat* } ]| -> js-stat|[ {} ]|
+    with stat2* := <js-hoist-statements> stat*
+    where rules ( FunctionDecls :+ depth -> js-stat|[ function x~(x*) { stat2* }]| )
+
+  js-hoist(|depth) :
+    js-e|[ function~(x*) { stat* } ]| -> js-e|[ function~(x*) { stat2* } ]|
+    where stat2* := <js-hoist-statements> stat*

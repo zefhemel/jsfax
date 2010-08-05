@@ -3,6 +3,7 @@
    JSModule                       -- V[_1],
    JSModule.1:iter-star           -- _1,
    JSVarDeclNoInit                -- H[KW["var"] _1 KW[";"]],
+   JSVarDeclNoInit.1:iter-star-sep-- _1 KW[","],
    JSVarDecl                      -- H[KW["var"] _1 KW["="] _2 KW[";"]],
    JSFor                          -- V[ H[KW["for"] KW["("] _1 _2 KW[";"] _3 KW[")"]] _4],
    JSForIn                        -- V[ H[KW["for"] KW["("] KW["var"] _1 KW["in"] _2 KW[")"]] _3],
@@ -29,6 +30,9 @@
    JSFunctionDecl                 -- V[ V is=2[ H[ KW["function"] _1 KW["("] _2 KW[")"] KW["{"]] _3] KW["}"]],
    JSFunctionDecl.2:iter-star-sep -- _1 KW[","],
    JSFunctionDecl.3:iter-star     -- _1,
+   JSAsyncFunctionDecl                 -- V[ V is=2[ H[ KW["function"] _1 KW["~("] _2 KW[")"] KW["{"]] _3] KW["}"]],
+   JSAsyncFunctionDecl.2:iter-star-sep -- _1 KW[","],
+   JSAsyncFunctionDecl.3:iter-star     -- _1,
    JSAssign                       -- H[_1 _2 _3 KW[";"]],
    JSLFieldAccess                 -- H hs=0[_1 KW["."] _2],
    JSLVar                         -- _1,
@@ -65,5 +69,8 @@
    JSIndex                        -- KW["["] _1 KW["]"],
    JSFunctionExp                  -- V[ V is=2[ H hs=0[ KW["function"] KW["("] _1 KW[")"] KW[" {"]] _2] KW["}"]],
    JSFunctionExp.1:iter-star-sep  -- _1 KW[", "],
-   JSFunctionExp.2:iter-star      -- _1
+   JSFunctionExp.2:iter-star      -- _1,
+   JSAsyncFunctionExp                  -- V[ V is=2[ H hs=0[ KW["function"] KW["~("] _1 KW[")"] KW[" {"]] _2] KW["}"]],
+   JSAsyncFunctionExp.1:iter-star-sep  -- _1 KW[", "],
+   JSAsyncFunctionExp.2:iter-star      -- _1
 ]

@@ -6,7 +6,13 @@ imports
 strategies
 
   js-optimize-all =
-    innermost(js-optimize)
+    topdown-l(try(js-optimize))
 
   js-optimize :
     js-stat|[ { { stat* }} ]| -> js-stat|[ { stat* } ]|
+
+  js-optimize :
+    js-stat|[ { stat } ]| -> stat
+
+  js-optimize :
+    [js-stat|[ { stat* } ]||stat2*] -> [stat*, stat2*]

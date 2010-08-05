@@ -93,6 +93,9 @@ strategies
     [js-stat|[function x(x*) { stat* }]||stats] -> [JSFunctionDecl(x, x*, <js-lift-statements> stat*)|<js-lift-statements> stats]
 
   js-lift-stats :
+    [js-stat|[function x~(x*) { stat* }]||stats] -> [JSAsyncFunctionDecl(x, x*, <js-lift-statements> stat*)|<js-lift-statements> stats]
+
+  js-lift-stats :
     [JSAssign(lval, op, e)|stats] -> <concat> [stats2, [JSAssign(lval, op, e2)|<js-lift-statements> stats]]
     where not(<js-is-sync> e)
     with (e2, stats2) := <js-lift-stats-aux> e
@@ -220,6 +223,14 @@ rules
           |}
        ; rules ( Exp :+= js-e|[ x ]| )
 
+  js-lift-exp :
+    js-e|[ function~(x*) { stat* } ]| -> js-stat*|[var x = function~(x*) { stat2* };]|
+    with x := <newname> "l"
+       ; {| Exp
+          : stat2* := <js-lift-statements> stat*
+          |}
+       ; rules ( Exp :+= js-e|[ x ]| )
+
 strategies
 
   js-is-sync = ?js-e|[ null ]|
@@ -232,6 +243,7 @@ strategies
   js-is-sync = ?JSInc(_)
   js-is-sync = ?JSDec(_)
   js-is-sync = ?js-e|[ function(x*) { stat* }]|
+  js-is-sync = ?js-e|[ function~(x*) { stat* }]|
 
   js-is-sync =
     ?js-e|[ [e*] ]|
@@ -291,7 +303,7 @@ strategies
 
   // And statements too
   js-is-sync =
-    ?js-stat|[ var x; ]|
+    ?js-stat|[ var x*; ]|
 
   js-is-sync =
     ?js-stat|[ var x = e; ]|
@@ -363,6 +375,9 @@ strategies
 
   js-is-sync =
     ?js-stat|[ function x(x*) { stat* } ]|
+
+  js-is-sync =
+    ?js-stat|[ function x~(x*) { stat* } ]|
 
   js-is-sync =
     ?JSAssign(lval, op, e)

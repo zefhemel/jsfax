@@ -4,10 +4,12 @@ imports
   optimize
   lift
   cps
+  hoist
 
 strategies
 
   js-process =
-    js-lift-statements
-    ; js-cps-statements
+    js-hoist-statements
+    ; js-lift-statements
+    ; js-cps-transform
     ; js-optimize-all

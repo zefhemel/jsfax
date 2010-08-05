@@ -12,7 +12,7 @@ exports
     Stat*       -> Start {cons("JSModule")}
 
   context-free syntax %% Statements
-    "var" ID ";"         -> Stat {cons("JSVarDeclNoInit")}
+    "var" {ID ","}* ";"         -> Stat {cons("JSVarDeclNoInit")}
     "var" ID "=" Exp ";" -> Stat {cons("JSVarDecl")}
 
     "for" "(" Stat Exp ";" Exp ")" Stat   -> Stat {cons("JSFor")}
@@ -40,7 +40,8 @@ exports
 
     "{" Stat* "}" -> Stat {cons("JSBlock")}
 
-    "function" ID"(" {ID ","}* ")" "{" Stat* "}" -> Stat {cons("JSFunctionDecl")}
+    "function" ID "(" {ID ","}* ")" "{" Stat* "}" -> Stat {cons("JSFunctionDecl")}
+    "function" ID "~(" {ID ","}* ")" "{" Stat* "}" -> Stat {cons("JSAsyncFunctionDecl")}
 
     LVal AssignOp Exp ";"                      -> Stat {cons("JSAssign")}
     Exp "." ID                            -> LVal {cons("JSLFieldAccess")}
@@ -90,6 +91,7 @@ exports
     "[" Exp "]"            -> IndexerSubscript {cons("JSIndex")}
 
     "function" "(" {ID ","}* ")" "{" Stat* "}" -> Exp {cons("JSFunctionExp")}
+    "function" "~(" {ID ","}* ")" "{" Stat* "}" -> Exp {cons("JSAsyncFunctionExp")}
 
    context-free priorities
     {

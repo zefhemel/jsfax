@@ -6,6 +6,48 @@ imports
 
 strategies
 
+  js-cps-transform =
+    alltd(js-cps-function)
+    ; topdown(try(js-cps-statements))
+
+  js-cps-function :
+    js-stat|[ function x~(x*) { stat* }]| -> js-stat|[ function x(x*, callback) { stat2* } ]|
+    where {| InAsyncFunction
+           : rules ( InAsyncFunction := 1 )
+           ; stat2* := <alltd(js-cps-function)> stat*
+           |}
+
+  js-cps-function :
+    js-stat|[ function x(x*) { stat* }]| -> js-stat|[ function x(x*) { stat2* } ]|
+    where {| InAsyncFunction
+           : rules ( InAsyncFunction := 0 )
+           ; stat2* := <alltd(js-cps-function)> stat*
+           |}
+
+  js-cps-function :
+    js-e|[ function~(x*) { stat* }]| -> js-e|[ function(x*, callback) { stat2* } ]|
+    where {| InAsyncFunction
+           : rules ( InAsyncFunction := 1 )
+           ; stat2* := <alltd(js-cps-function)> stat*
+           |}
+
+  js-cps-function :
+    js-e|[ function(x*) { stat* }]| -> js-e|[ function(x*) { stat2* } ]|
+    where {| InAsyncFunction
+           : rules ( InAsyncFunction := 0 )
+           ; stat2* := <alltd(js-cps-function)> stat*
+           |}
+
+  js-cps-function :
+    js-stat|[ return; ]| -> js-stat|[ { callback(); return; } ]|
+    where 1 := <InAsyncFunction>
+
+  js-cps-function :
+    js-stat|[ return e; ]| -> js-stat|[ { callback(e); return; } ]|
+    where 1 := <InAsyncFunction>
+
+strategies
+
   js-cps-statements :
     [stat|stat*] -> [stat|<js-cps-statements> stat*]
     where <js-is-sync> stat
@@ -23,21 +65,13 @@ strategies
   js-cps-stats :
     [stat|stat*] -> [stat|<js-cps-statements> stat*]
 
-  js-cps-statements = debug(!"Could not cps statements: "); fail
-
 strategies
 
   js-cps-expression(|stat*) =
     ?e
-    ; debug(!"Exp: ")
-    ; where(<debug(!"Stat*: ")> stat*)
     ; if js-is-sync then
-        if ?js-e|[ result__ ]| then
-          <js-cps-statements> stat*
-        else
-          stat2* := <js-cps-statements> stat*
-          ; !js-stat*|[ var result__ = e; stat2* ]|
-        end
+        stat2* := <js-cps-statements> stat*
+        ; !js-stat*|[ var result__ = e; stat2* ]|
       else
           js-cps-exp(|stat*)
         <+ debug(!"Could not CPS this async: "); fail
