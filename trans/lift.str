@@ -1,0 +1,284 @@
+module lift
+
+imports
+  include/Jsfax
+
+strategies
+
+  js-lift-statements =
+       js-lift-stats
+    <+ ?[a|k]
+       ; ![a|<js-lift-statements> k]
+
+  js-lift-statements :
+    [] -> []
+
+  js-lift-stats-aux :
+    e -> (e2, stats)
+    with {| Exp
+          : stats := <js-lift-expression> e
+          ; e2 := <Exp>
+          |}
+
+  js-lift-stats :
+    [js-stat|[ var x = e; ]||stats] -> <concat> [stats2, [js-stat|[ var x = e2; ]||<js-lift-statements> stats]]
+    where not(<js-is-sync> e)
+    with (e2, stats2) := <js-lift-stats-aux> e
+
+  js-lift-stats :
+    [js-stat|[ e; ]||stats] -> <concat> [stats2, <js-lift-statements> stats]
+    where not(<js-is-sync> e)
+    with (e2, stats2) := <js-lift-stats-aux> e
+
+  js-lift-stats :
+    [js-stat|[ if(e) stat_true else stat_false ]||stats] -> <concat> [stats2, [JSIf(e2, JSBlock(<js-lift-statements> [stat_true]), JSBlock(<js-lift-statements> [stat_false]))|<js-lift-statements> stats]]
+    //where not(<js-is-sync> e)
+    with (e2, stats2) := <js-lift-stats-aux> e
+
+  js-lift-stats :
+    [js-stat|[ if(e) stat_true ]||stats] -> <concat> [stats2, [JSIfNoElse(e2, JSBlock(<js-lift-statements> [stat_true]))|<js-lift-statements> stats]]
+    //where not(<js-is-sync> e)
+    with (e2, stats2) := <js-lift-stats-aux> e
+
+  // TODO: Doesn't handle lifting in `stat` yet
+  js-lift-stats :
+    [js-stat|[ for(stat e; e2) stat_block ]||stats] -> <concat> [stats1, stats2, [JSFor(stat, e3, e4, JSBlock(<js-lift-statements> [stat_block]))|<js-lift-statements> stats]]
+    //where not(<js-is-sync> e; <js-is-sync> e2)
+    with (e3, stats1) := <js-lift-stats-aux> e
+       ; (e4, stats2) := <js-lift-stats-aux> e2
+
+  js-lift-stats :
+    [js-stat|[ for(var x in e) stat_block ]||stats] -> <concat> [stats1, [JSForIn(x, e2, JSBlock(<js-lift-statements> [stat_block]))|<js-lift-statements> stats]]
+    //where not(<js-is-sync> e)
+    with (e2, stats1) := <js-lift-stats-aux> e
+
+  js-lift-stats :
+    [js-stat|[ while(e) stat_block ]||stats] -> <concat> [stats1, [JSWhile(e2, JSBlock(<js-lift-statements> [stat_block]))|<js-lift-statements> stats]]
+    //where not(<js-is-sync> e)
+    with (e2, stats1) := <js-lift-stats-aux> e
+
+  js-lift-stats :
+    [js-stat|[ try { stat* } catch(x) { stat2* }]||stats] -> [JSTryCatch(<js-lift-statements> stat*, x, <js-lift-statements> stat2*)|<js-lift-statements> stats]
+
+  js-lift-stats :
+    [JSSwitch(e, case*)|stats] -> <concat> [stats1, [JSSwitch(e2, <js-lift-cases> case*)|<js-lift-statements> stats]]
+    with (e2, stats1) := <js-lift-stats-aux> e
+
+  // TODO: Doesn't lift `e`
+  js-lift-cases :
+    [JSCase(e, stat*)|cases] -> [JSCase(e, <js-lift-statements> stat*)|<js-lift-cases> cases]
+
+  js-lift-cases :
+    [JSDefaultCase(stat*)|cases] -> [JSDefaultCase(<js-lift-statements> stat*)|<js-lift-cases> cases]
+
+  js-lift-stats :
+    [js-stat|[ throw e; ]||stats] -> <concat> [stats1, [js-stat|[throw e2;]||<js-lift-statements> stats]]
+    where not(<js-is-sync> e)
+    with (e2, stats1) := <js-lift-stats-aux> e
+
+  js-lift-stats :
+    [js-stat|[return e;]||stats] -> <concat> [stats1, [js-stat|[return e2;]||<js-lift-statements> stats]]
+    where not(<js-is-sync> e)
+    with (e2, stats1) := <js-lift-stats-aux> e
+
+  js-lift-stats :
+    [js-stat|[delete e;]||stats] -> <concat> [stats1, [js-stat|[delete e2;]||<js-lift-statements> stats]]
+    where not(<js-is-sync> e)
+    with (e2, stats1) := <js-lift-stats-aux> e
+
+  js-lift-stats :
+    [js-stat|[{ stat* }]||stats] -> [JSBlock(<js-lift-statements> stat*)|<js-lift-statements> stats]
+
+  js-lift-stats :
+    [js-stat|[function x(x*) { stat* }]||stats] -> [JSFunctionDecl(x, x*, <js-lift-statements> stat*)|<js-lift-statements> stats]
+
+  js-lift-stats :
+    [JSAssign(lval, op, e)|stats] -> <concat> [stats2, [JSAssign(lval, op, e2)|<js-lift-statements> stats]]
+    where not(<js-is-sync> e)
+    with (e2, stats2) := <js-lift-stats-aux> e
+
+
+rules
+
+  js-lift-expression :
+    e -> []
+    where js-is-sync
+    with rules ( Exp :+= e)
+
+  js-lift-expression :
+    e -> <js-lift-exp> e
+    where not(js-is-sync)
+
+  js-lift-expressions-aux :
+    e* -> (e2*, stats)
+    where {| Exp
+           : stats := <map(js-lift-expression); concat> e*
+           ; e2* := <bagof-Exp; reverse> // taking advantage of Exp ordering here, risky
+           |}
+
+  js-lift-expression-aux :
+    e -> (e2, stats)
+    where {| Exp
+           : stats := <js-lift-expression> e
+           ; e2 := <Exp>
+          |}
+
+  js-lift-exp :
+    js-e|[ [e*] ]| -> <concat> [stats, [js-stat|[var x = [e2*]; ]|]]
+    with x := <newname> "l"
+       ; (e2*, stats) := <js-lift-expressions-aux> e*
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[new e(e*)]| -> <concat> [stats1, stats, [js-stat|[var x = new e2(e2*);]|]]
+    with x := <newname> "l"
+       ; (e2, stats1) := <js-lift-expression-aux> e
+       ; (e2*, stats) := <js-lift-expressions-aux> e*
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    JSObj(propval*) -> <concat> [stats, [JSVarDecl(x, JSObj(propval2*))]]
+    with x := <newname> "l"
+       ; {| Exp
+          : stats := <map(?JSPropVal(_, <id>); js-lift-expression); concat> propval*
+          ; propval2* := <bagof-Exp; reverse; <zip(\ (prop, val) -> JSPropVal(prop, val) \)> (<map(?JSPropVal(<id>, _))> propval*, <id>)> // taking advantage of Exp ordering here, risky
+          |}
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[!e]| -> <concat> [stats, [js-stat|[var x = !e2;]|]]
+    with x := <newname> "l"
+       ; (e2, stats) := <js-lift-expression-aux> e
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[typeof e]| -> <concat> [stats, [js-stat|[var x = typeof e2;]|]]
+    with x := <newname> "l"
+       ; (e2, stats) := <js-lift-expression-aux> e
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[e1 in e2 ]| -> <concat> [stats1, stats2, [js-stat|[var x = e3 in e4;]|]]
+    with x := <newname> "l"
+       ; (e3, stats1) := <js-lift-expression-aux> e1
+       ; (e4, stats2) := <js-lift-expression-aux> e2
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[e1 ? e2 : e3 ]| -> <concat> [stats1, stats2, stats3, [js-stat|[var x = e4 ? e5 : e6;]|]]
+    with x := <newname> "l"
+       ; (e4, stats1) := <js-lift-expression-aux> e1
+       ; (e5, stats2) := <js-lift-expression-aux> e2
+       ; (e6, stats3) := <js-lift-expression-aux> e3
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[(e)]| -> <concat> [stats, [js-stat|[var x = e2;]|]]
+    with x := <newname> "l"
+       ; (e2, stats) := <js-lift-expression-aux> e
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    JSOp(e1, op, e2) -> <concat> [stats1, stats2, [JSVarDecl(x, JSOp(e3, op, e4))]]
+    with x := <newname> "l"
+       ; (e3, stats1) := <js-lift-expression-aux> e1
+       ; (e4, stats2) := <js-lift-expression-aux> e2
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[e.y]| -> <concat> [stats, [js-stat|[var x = e2.y;]|]]
+    with x := <newname> "l"
+       ; (e2, stats) := <js-lift-expression-aux> e
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[e(e*)]| -> <concat> [stats1, stats, [js-stat|[var x = e2(e2*);]|]]
+    with x := <newname> "l"
+       ; (e2, stats1) := <js-lift-expression-aux> e
+       ; (e2*, stats) := <js-lift-expressions-aux> e*
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[e[e2]]| -> <concat> [stats1, stats2, [js-stat|[var x = e3[e4];]|]]
+    with x := <newname> "l"
+       ; (e3, stats1) := <js-lift-expression-aux> e
+       ; (e4, stats2) := <js-lift-expression-aux> e2
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
+    js-e|[ function(x*) { stat* } ]| -> <debug(!"Code: ")> js-stat*|[var x = function(x*) { stat2* };]|
+    with x := <newname> "l"
+       ; {| Exp
+          : stat2* := <debug(!"Before: "); js-lift-statements; debug(!"After: ")> stat*
+          |}
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+strategies
+
+  js-is-sync = ?js-e|[ null ]|
+  js-is-sync = ?js-e|[ true ]|
+  js-is-sync = ?js-e|[ false ]|
+  js-is-sync = ?js-e|[ this ]|
+  js-is-sync = ?js-e|[ x ]|
+  js-is-sync = ?JSIntLit(_)
+  js-is-sync = ?JSStringLit(_)
+  js-is-sync = ?JSInc(_)
+  js-is-sync = ?JSDec(_)
+  js-is-sync = ?js-e|[ function(x*) { stat* }]|
+
+  js-is-sync =
+    ?js-e|[ [e*] ]|
+    ; <map(js-is-sync)> e*
+
+  js-is-sync =
+    ?js-e|[ new e(e*) ]|
+    ; <js-is-sync> e
+    ; <map(js-is-sync)> e*
+
+  js-is-sync =
+    ?JSObj(propval*)
+    ; <map(?JSPropVal(_, <id>); js-is-sync)> propval*
+    ; <map(?JSPropVal(<id>, _); (is-string <+ js-is-sync))> propval*
+
+  js-is-sync =
+    ?JSOp(e1, _, e2)
+    ; <js-is-sync> e1
+    ; <js-is-sync> e2
+
+  js-is-sync =
+    ?js-e|[ typeof e ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-e|[ e in e2 ]|
+    ; <js-is-sync> e
+    ; <js-is-sync> e2
+
+  js-is-sync =
+    ?js-e|[ !e ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-e|[ (e) ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-e|[ e ? e1 : e2 ]|
+    ; <js-is-sync> e
+    ; <js-is-sync> e1
+    ; <js-is-sync> e2
+
+  js-is-sync =
+    ?js-e|[ e.x ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-e|[ e[e2] ]|
+    ; <js-is-sync> e
+    ; <js-is-sync> e2
+
+  js-is-sync =
+    ?js-e|[ e(e*) ]|
+    ; <js-is-sync> e
+    ; <map(js-is-sync)> e*
+
