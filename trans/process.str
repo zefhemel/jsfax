@@ -1,0 +1,13 @@
+module process
+
+imports
+  optimize
+  lift
+  cps
+
+strategies
+
+  js-process =
+    js-lift-statements
+    ; js-cps-statements
+    ; js-optimize-all

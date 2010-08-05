@@ -1,0 +1,50 @@
+module cps
+
+imports
+  include/Jsfax
+  lift
+
+strategies
+
+  js-cps-statements :
+    [stat|stat*] -> [stat|<js-cps-statements> stat*]
+    where <js-is-sync> stat
+
+  js-cps-statements :
+    [stat|stat*] -> <js-cps-stats> [stat|stat*]
+    where not(<js-is-sync> stat)
+
+  js-cps-statements :
+    [] -> []
+
+  js-cps-stats :
+    [js-stat|[ var x = e; ]||stat*] -> <js-cps-expression(|[js-stat|[ var x = result__; ]||stat*])> e
+
+  js-cps-stats :
+    [stat|stat*] -> [stat|<js-cps-statements> stat*]
+
+  js-cps-statements = debug(!"Could not cps statements: "); fail
+
+strategies
+
+  js-cps-expression(|stat*) =
+    ?e
+    ; debug(!"Exp: ")
+    ; where(<debug(!"Stat*: ")> stat*)
+    ; if js-is-sync then
+        if ?js-e|[ result__ ]| then
+          <js-cps-statements> stat*
+        else
+          stat2* := <js-cps-statements> stat*
+          ; !js-stat*|[ var result__ = e; stat2* ]|
+        end
+      else
+          js-cps-exp(|stat*)
+        <+ debug(!"Could not CPS this async: "); fail
+      end
+
+  js-cps-exp(|stat*) :
+    js-e|[ e~(e*) ]| -> js-stat*|[e(e*, function(result__) {
+      stat2*
+    });]|
+    with stat2* := <js-cps-statements <+ debug(!"Stats failed: "); fail> stat*

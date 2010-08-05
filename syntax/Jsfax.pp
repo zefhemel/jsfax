@@ -59,6 +59,8 @@
    JSFieldAccess                  -- H hs=0[_1 KW["."] _2],
    JSCall                         -- _1 KW["("] _2 KW[")"],
    JSCall.2:iter-star-sep         -- _1 KW[","],
+   JSAsyncCall                    -- _1 KW["~("] _2 KW[")"],
+   JSAsyncCall.2:iter-star-sep    -- _1 KW[","],
    JSPropAccess                   -- H hs=0[_1 _2],
    JSIndex                        -- KW["["] _1 KW["]"],
    JSFunctionExp                  -- V[ V is=2[ H hs=0[ KW["function"] KW["("] _1 KW[")"] KW[" {"]] _2] KW["}"]],

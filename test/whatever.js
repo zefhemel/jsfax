@@ -1,15 +1,12 @@
 var sys = require('sys');
 var print = sys.print;
 
-var a = 1 + 2 + 3;
-
-var ar = [];
-for(var i = 0; i < 25; i++) {
-  if(i % 2 === 0) {
-    ar.push(i);
-  }
+function addNumbersAsync(a, b, callback) {
+  callback(a + b);
 }
 
-ar.forEach(function(el) {
-  print("Hello world!\n");
-});
+//var result = addNumbersAsync~(2, 2) * addNumbersAsync~(7, 7);
+//print(result + "\n");
+
+var someObj = { name: "Zef Hemel", age: addNumbersAsync~(1, 2) };
+print(sys.inspect(someObj));

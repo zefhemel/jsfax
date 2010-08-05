@@ -1,0 +1,12 @@
+module optimize
+
+imports
+  include/Jsfax
+
+strategies
+
+  js-optimize-all =
+    innermost(js-optimize)
+
+  js-optimize :
+    js-stat|[ { { stat* }} ]| -> js-stat|[ { stat* } ]|

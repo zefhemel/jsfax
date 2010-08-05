@@ -82,9 +82,10 @@ exports
     Exp TermOperatorMethodId Exp -> Exp {cons("JSOp"), left}
     Exp OperatorMethodId Exp     -> Exp {cons("JSOp"), left}
 
-    Exp "." ID             -> Exp {cons("JSFieldAccess")}
-    Exp "(" {Exp ","}* ")" -> Exp {cons("JSCall")}
-    Exp IndexerSubscript   -> Exp {cons("JSPropAccess")}
+    Exp "." ID              -> Exp {cons("JSFieldAccess")}
+    Exp "(" {Exp ","}* ")"  -> Exp {cons("JSCall")}
+    Exp "~(" {Exp ","}* ")" -> Exp {cons("JSAsyncCall")}
+    Exp IndexerSubscript    -> Exp {cons("JSPropAccess")}
 
     "[" Exp "]"            -> IndexerSubscript {cons("JSIndex")}
 
@@ -94,6 +95,7 @@ exports
     {
       Exp "." ID -> Exp
       Exp "(" {Exp ","}* ")"   -> Exp
+      Exp "~(" {Exp ","}* ")"   -> Exp
       Exp IndexerSubscript     -> Exp
     }
   > "!" Exp         -> Exp

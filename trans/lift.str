@@ -199,6 +199,13 @@ rules
        ; rules ( Exp :+= js-e|[ x ]| )
 
   js-lift-exp :
+    js-e|[e~(e*)]| -> <concat> [stats1, stats, [js-stat|[var x = e2~(e2*);]|]]
+    with x := <newname> "l"
+       ; (e2, stats1) := <js-lift-expression-aux> e
+       ; (e2*, stats) := <js-lift-expressions-aux> e*
+       ; rules ( Exp :+= js-e|[ x ]| )
+
+  js-lift-exp :
     js-e|[e[e2]]| -> <concat> [stats1, stats2, [js-stat|[var x = e3[e4];]|]]
     with x := <newname> "l"
        ; (e3, stats1) := <js-lift-expression-aux> e
@@ -206,10 +213,10 @@ rules
        ; rules ( Exp :+= js-e|[ x ]| )
 
   js-lift-exp :
-    js-e|[ function(x*) { stat* } ]| -> <debug(!"Code: ")> js-stat*|[var x = function(x*) { stat2* };]|
+    js-e|[ function(x*) { stat* } ]| -> js-stat*|[var x = function(x*) { stat2* };]|
     with x := <newname> "l"
        ; {| Exp
-          : stat2* := <debug(!"Before: "); js-lift-statements; debug(!"After: ")> stat*
+          : stat2* := <js-lift-statements> stat*
           |}
        ; rules ( Exp :+= js-e|[ x ]| )
 
@@ -282,3 +289,81 @@ strategies
     ; <js-is-sync> e
     ; <map(js-is-sync)> e*
 
+  // And statements too
+  js-is-sync =
+    ?js-stat|[ var x; ]|
+
+  js-is-sync =
+    ?js-stat|[ var x = e; ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-stat|[ for(stat e; e2) stat2 ]|
+    ; <map(js-is-sync)> [stat, e, e2, stat2]
+
+  js-is-sync =
+    ?js-stat|[ for(var x in e) stat ]|
+    ; <map(js-is-sync)> [e, stat]
+
+  js-is-sync =
+    ?js-stat|[ if(e) stat ]|
+    ; <map(js-is-sync)> [e, stat]
+
+  js-is-sync =
+    ?js-stat|[ if(e) stat else stat2]|
+    ; <map(js-is-sync)> [e, stat, stat2]
+
+  js-is-sync =
+    ?js-stat|[ while(e) stat]|
+    ; <map(js-is-sync)> [e, stat]
+
+  js-is-sync =
+    ?js-stat|[ try { stat* } catch(x) { stat2* } ]|
+    ; <map(js-is-sync)> [stat*, stat2*]
+
+  js-is-sync =
+    ?JSSwitch(e, case*)
+    ; <js-is-sync> e
+    ; <map(js-is-sync-case)> case*
+
+  js-is-sync-case =
+    ?JSCase(e, stat*)
+    ; <js-is-sync> e
+    ; <map(js-is-sync)> stat*
+
+  js-is-sync-case =
+    ?JSDefaultCase(stat*)
+    ; <map(js-is-sync)> stat*
+
+  js-is-sync =
+    ?js-stat|[ break; ]|
+
+  js-is-sync =
+    ?js-stat|[ throw e; ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-stat|[ return e; ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-stat|[ return; ]|
+
+  js-is-sync =
+    ?js-stat|[ delete e; ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-stat|[ e; ]|
+    ; <js-is-sync> e
+
+  js-is-sync =
+    ?js-stat|[ { stat* } ]|
+    ; <map(js-is-sync)> stat*
+
+  js-is-sync =
+    ?js-stat|[ function x(x*) { stat* } ]|
+
+  js-is-sync =
+    ?JSAssign(lval, op, e)
+    ; <js-is-sync> e

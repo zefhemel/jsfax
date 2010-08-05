@@ -7,7 +7,7 @@ imports
   include/Jsfax
   lib/editor-common.generated
   check
-  lift
+  process
 
 rules // Main editor interface (defined by editor/Jsfax-Builders and -References.esv)
 
@@ -40,7 +40,7 @@ rules // Main editor interface (defined by editor/Jsfax-Builders and -References
     with
       filename := <guarantee-extension(|"lift.js")> path;
       JSModule(stat*) := ast;
-      result   := JSModule(<js-lift-statements> stat*) // we just return the input term
+      result   := JSModule(<js-process> stat*) // we just return the input term
 
   // Resolves a reference when the user control-clicks or presses F3 in the editor.
   // Only succeeds for nodes of the form Type(_) for which GetEntity is defined.
